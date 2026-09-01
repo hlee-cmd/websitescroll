@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Custom Keyboard — Scroll Sequence</title>
+<meta name="description" content="A scroll-linked frame sequence exploring the layers of a custom mechanical keyboard.">
+
+<style>
+  :root{
+    --bg: #9a9a9a;
+    --ink: #16171a;
+    --paper: #f3f2ee;
+    --accent: #c8ff5a;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ---------- Simple bookend sections so the sequence has context ---------- */
+  .intro, .outro{
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8vh 6vw;
+    background: var(--paper);
+  }
+  .outro{ background: var(--ink); color: var(--paper); }
+
+  .eyebrow{
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.6;
+    margin-bottom: 14px;
+  }
+  .intro h1{
+    font-size: clamp(28px, 6vw, 56px);
+    line-height: 1.05;
+    margin: 0 0 16px;
+    max-width: 16ch;
+    letter-spacing: -0.02em;
+  }
+  .intro p, .outro p{
+    max-width: 46ch;
+    font-size: clamp(15px, 2vw, 18px);
+    line-height: 1.5;
+    opacity: 0.75;
+    margin: 0;
+  }
+  .outro h2{
+    font-size: clamp(24px, 5vw, 40px);
+    margin: 0 0 14px;
+    letter-spacing: -0.02em;
+  }
+  .cta{
+    margin-top: 28px;
+    display: inline-block;
+    padding: 13px 26px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #12140f;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+  }
+
+  /* ---------- Sequence section ---------- */
+  .sequence-wrap{
+    position: relative;
+    /* Total scrollable distance the sequence plays over.
+       Bigger number = slower / more deliberate scroll-scrub. */
+    height: 500vh;
+    background: var(--bg);
+  }
+
+  .sequence-sticky{
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh; /* progressive enhancement: avoids jump/jank from mobile browser chrome collapsing */
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+  }
+
+  #seq-canvas{
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ---------- Loading fallback ---------- */
+  .loader{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    z-index: 20;
+    transition: opacity 0.5s ease;
+  }
+  .loader.is-hidden{
+    opacity: 0;
+    pointer-events: none;
+  }
+  .loader-inner{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .loader-ring{
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 3px solid rgba(22,23,26,0.15);
+    border-top-color: var(--ink);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  #loader-text{
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    opacity: 0.7;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .loader-error{
+    max-width: 34ch;
+    text-align: center;
+    font-size: 13px;
+    opacity: 0.8;
+    margin: 6px 0 0;
+  }
+
+  /* ---------- Text overlays synced to scroll ---------- */
+  .text-layer{
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .seq-text{
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 0);
+    width: min(88vw, 620px);
+    text-align: center;
+    opacity: 0;
+  }
+  .seq-text h2{
+    margin: 0 0 8px;
+    font-size: clamp(22px, 4vw, 34px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ink);
+    text-shadow: 0 1px 24px rgba(243,242,238,0.9), 0 1px 2px rgba(243,242,238,0.9);
+  }
+  .seq-text p{
+    margin: 0;
+    font-size: clamp(13px, 1.8vw, 16px);
+    line-height: 1.45;
+    color: var(--ink);
+    opacity: 0.82;
+    text-shadow: 0 1px 20px rgba(243,242,238,0.9), 0 1px 2px rgba(243,242,238,0.9);
+  }
+
+  .seq-text--1{ top: 10%; }
+  .seq-text--2{ top: 10%; }
+  .seq-text--3{ bottom: 10%; }
+  .seq-text--4{ top: 10%; }
+
+  .scroll-hint{
+    position: absolute;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    opacity: 0.55;
+    z-index: 10;
+    animation: bob 1.6s ease-in-out infinite;
+  }
+  @keyframes bob{
+    0%, 100%{ transform: translate(-50%, 0); }
+    50%{ transform: translate(-50%, 6px); }
+  }
+
+  @media (max-width: 640px){
+    .seq-text--1, .seq-text--2, .seq-text--4{ top: 8%; }
+    .seq-text--3{ bottom: 8%; }
+  }
+</style>
+</head>
+<body>
+
+  <section class="intro">
+    <div class="eyebrow">Teardown / Scroll Story</div>
+    <h1>What's actually inside a custom keyboard</h1>
+    <p>Scroll down. Every plate, switch and layer separates frame by frame as you go.</p>
+  </section>
+
+  <section class="sequence-wrap" id="sequenceWrap">
+    <div class="sequence-sticky" id="sequenceSticky">
+
+      <canvas id="seq-canvas" aria-label="Animated exploded view of a custom mechanical keyboard, controlled by scrolling"></canvas>
+
+      <div class="text-layer" id="textLayer">
+        <div class="seq-text seq-text--1" id="t1">
+          <h2>A custom mechanical keyboard</h2>
+          <p>Every layer here was chosen on purpose — case, plate, switches, keycaps, cable.</p>
+        </div>
+        <div class="seq-text seq-text--2" id="t2">
+          <h2>Hot-swap switches, no soldering</h2>
+          <p>Lift the plate and the switch row lifts with it. Pull one out, drop another in.</p>
+        </div>
+        <div class="seq-text seq-text--3" id="t3">
+          <h2>Gasket-mounted, foam-dampened</h2>
+          <p>A foam layer sits between the plate and PCB, tuning the sound and feel of every keystroke.</p>
+        </div>
+        <div class="seq-text seq-text--4" id="t4">
+          <h2>Every part, fully custom</h2>
+          <p>Case, plate, PCB, switches, stabilizers, coiled cable — nothing here is fixed.</p>
+        </div>
+      </div>
+
+      <div class="scroll-hint" id="scrollHint">Scroll to explore ↓</div>
+
+      <div class="loader" id="loader">
+        <div class="loader-inner">
+          <div class="loader-ring"></div>
+          <p id="loader-text">Loading frames… 0%</p>
+          <p class="loader-error" id="loader-error" hidden></p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="outro">
+    <h2>Build your own.</h2>
+    <p>240 frames, one scrollbar. Swap in your own product's frame sequence and this same rig will drive it.</p>
+    <a class="cta" href="#top">Back to top ↑</a>
+  </section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     CONFIG — edit these to point at your own frame sequence
+     ============================================================ */
+  var FRAME_COUNT   = 240;
+  var FRAME_PATH    = function(i){
+    // ezgif-frame-001.jpg ... ezgif-frame-240.jpg
+    var n = String(i).padStart(3, "0");
+    return "frames/ezgif-frame-" + n + ".jpg";
+  };
+  var BG_COLOR = "#9a9a9a"; // matches the frames' own background for seamless letterboxing
+
+  /* ============================================================
+     DOM refs
+     ============================================================ */
+  var canvas      = document.getElementById("seq-canvas");
+  var ctx         = canvas.getContext("2d");
+  var loader      = document.getElementById("loader");
+  var loaderText  = document.getElementById("loader-text");
+  var loaderError = document.getElementById("loader-error");
+  var scrollHint  = document.getElementById("scrollHint");
+  var wrap        = document.getElementById("sequenceWrap");
+  var sticky      = document.getElementById("sequenceSticky");
+
+  var images = new Array(FRAME_COUNT);
+  var loadedCount = 0;
+  var failedCount = 0;
+  var firstFrameReady = false;
+
+  /* ============================================================
+     Canvas sizing — sharp on retina + mobile, always centered
+     ============================================================ */
+  var cssW = 0, cssH = 0, dpr = 1;
+
+  function sizeCanvas(){
+    dpr  = Math.min(window.devicePixelRatio || 1, 2.5); // cap DPR to keep perf sane on high-DPI phones
+    cssW = sticky.clientWidth;
+    cssH = sticky.clientHeight;
+    canvas.width  = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width  = cssW + "px";
+    canvas.style.height = cssH + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /* ============================================================
+     Draw a given frame index, "cover" fit, centered
+     ============================================================ */
+  var currentFrame = 0;
+
+  function drawFrame(index){
+    index = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(index)));
+    currentFrame = index;
+
+    var img = isUsable(images[index]) ? images[index] : nearestLoaded(index);
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0, 0, cssW, cssH);
+    if (!img) return;
+
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var scale = Math.max(cssW / iw, cssH / ih); // cover
+    var dw = iw * scale, dh = ih * scale;
+    var dx = (cssW - dw) / 2, dy = (cssH - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  function isUsable(img){
+    // img.complete is true even after a failed/broken load, so it must be
+    // paired with naturalWidth to confirm real pixel data is available.
+    return !!(img && img.complete && img.naturalWidth > 0);
+  }
+
+  function nearestLoaded(index){
+    // fallback so a single failed/slow frame doesn't blank the canvas
+    for (var offset = 1; offset < FRAME_COUNT; offset++){
+      if (isUsable(images[index - offset])) return images[index - offset];
+      if (isUsable(images[index + offset])) return images[index + offset];
+    }
+    return null;
+  }
+
+  /* ============================================================
+     Preload all frames, report progress, degrade gracefully
+     ============================================================ */
+  function preload(){
+    return new Promise(function(resolve){
+      var settled = 0;
+
+      function settle(){
+        settled++;
+        var pct = Math.round((settled / FRAME_COUNT) * 100);
+        loaderText.textContent = "Loading frames\u2026 " + pct + "%";
+
+        if (!firstFrameReady && images[0] && images[0].complete){
+          firstFrameReady = true;
+          drawFrame(0); // paint something as soon as we possibly can
+        }
+
+        if (settled === FRAME_COUNT) resolve();
+      }
+
+      for (var i = 0; i < FRAME_COUNT; i++){
+        (function(idx){
+          var img = new Image();
+          img.decoding = "async";
+          img.onload = function(){ loadedCount++; settle(); };
+          img.onerror = function(){ failedCount++; settle(); };
+          img.src = FRAME_PATH(idx + 1);
+          images[idx] = img;
+        })(i);
+      }
+    });
+  }
+
+  /* ============================================================
+     Scroll-driven playback via GSAP + ScrollTrigger
+     ============================================================ */
+  function initScrollSequence(){
+    gsap.registerPlugin(ScrollTrigger);
+
+    var playhead = { frame: 0 };
+
+    var tl = gsap.timeline({
+      defaults: { ease: "none" },
+      scrollTrigger: {
+        trigger: wrap,
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 0.6,        // smooths scroll input so playback doesn't stutter on fast/jerky scrolling
+        pin: sticky,
+        pinSpacing: false, // wrap already reserves the scroll distance via its own height
+        anticipatePin: 1,
+        onUpdate: function(self){
+          if (scrollHint) scrollHint.style.opacity = self.progress < 0.02 ? 0.55 : 0;
+        }
+      }
+    });
+
+    // Drive the frame index across the whole scroll range
+    tl.to(playhead, {
+      frame: FRAME_COUNT - 1,
+      duration: 100,
+      onUpdate: function(){ drawFrame(playhead.frame); }
+    }, 0);
+
+    // Text beats, positioned as fractions (0–100) of the same scroll range
+    fadeText("#t1", 2, 14);
+    fadeText("#t2", 26, 40);
+    fadeText("#t3", 52, 66);
+    fadeText("#t4", 82, 96);
+
+    function fadeText(sel, inAt, outAt){
+      tl.to(sel, { opacity: 1, duration: 4 }, inAt);
+      tl.to(sel, { opacity: 0, duration: 4 }, outAt);
+    }
+
+    window.addEventListener("resize", debounce(function(){
+      sizeCanvas();
+      drawFrame(currentFrame);
+      ScrollTrigger.refresh();
+    }, 150));
+  }
+
+  function debounce(fn, wait){
+    var t;
+    return function(){
+      clearTimeout(t);
+      var args = arguments;
+      t = setTimeout(function(){ fn.apply(null, args); }, wait);
+    };
+  }
+
+  /* ============================================================
+     Boot
+     ============================================================ */
+  sizeCanvas();
+
+  preload().then(function(){
+    sizeCanvas();
+    drawFrame(0);
+
+    if (failedCount > 0){
+      loaderError.hidden = false;
+      loaderError.textContent = failedCount + " of " + FRAME_COUNT +
+        " frames failed to load — playback will hold on the nearest available frame for those.";
+      // brief delay so the message is readable, then proceed anyway
+      setTimeout(reveal, 900);
+    } else {
+      reveal();
+    }
+  });
+
+  function reveal(){
+    loader.classList.add("is-hidden");
+    initScrollSequence();
+  }
+
+  // Extremely defensive fallback: if something above throws before the
+  // loader is ever dismissed (e.g. every single frame 404s), don't leave
+  // the visitor staring at an infinite spinner.
+  setTimeout(function(){
+    if (!loader.classList.contains("is-hidden")){
+      loaderText.textContent = "Still loading\u2026 this is taking longer than expected.";
+      loaderError.hidden = false;
+      loaderError.textContent = "Check that the /frames folder was uploaded alongside index.html.";
+    }
+  }, 15000);
+
+})();
+</script>
+
+</body>
+</html>
